@@ -1,0 +1,219 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+//
+// ADMIN MODEL
+//
+model Admin {
+  id            Int       @id @default(autoincrement())
+  name          String
+  email         String    @unique
+  password      String
+  role          String    @default("counsellor")
+  isActive      Boolean   @default(true)
+  lastLogin     DateTime?
+  loginAttempts Int       @default(0)
+  lockUntil     DateTime?
+
+  // Relations
+  appointments Appointment[]    @relation("AdminAppointments")
+  studentNotes CounselingNote[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+//
+// STUDENT MODEL
+//
+model Student {
+  id Int @id @default(autoincrement())
+
+  // Personal Info
+  firstName   String
+  lastName    String
+  email       String   @unique
+  phone       String
+  dateOfBirth DateTime
+  gender      String
+  street      String?
+  city        String?
+  state       String?
+  pincode     String?
+
+  // Academic Info
+  currentClass String
+  school       String
+  board        String?
+  subjects     Subject[]
+  interests    Interest[]
+  marks        Mark[]
+  careerGoals  String?
+
+  // Counseling Info
+  totalAppointments     Int       @default(0)
+  completedAppointments Int       @default(0)
+  lastAppointmentDate   DateTime?
+  riskLevel             String    @default("Low")
+  specialNeeds          String?
+
+  // Parent/Guardian
+  parentName         String?
+  parentRelationship String?
+  parentPhone        String?
+  parentEmail        String?
+
+  // Authentication
+  password         String?
+  usn              String?   @unique
+  role             String    @default("student")
+  isVerified       Boolean   @default(false)
+  otp              String?
+  otpExpires       DateTime?
+  lastLogin        DateTime?
+  status           String    @default("Active")
+  registrationDate DateTime  @default(now())
+  isActive         Boolean   @default(true)
+
+  // Relations
+  counselingNotes CounselingNote[]
+  appointments    Appointment[]    @relation("StudentAppointments")
+  followUpEmails  FollowUpEmail[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+//
+// Appointment MODEL
+//
+model Appointment {
+  id Int @id @default(autoincrement())
+
+  // Relations
+  studentId Int
+  student   Student @relation("StudentAppointments", fields: [studentId], references: [id])
+
+  counsellorId Int?
+  counsellor   Admin? @relation("AdminAppointments", fields: [counsellorId], references: [id])
+
+  // Appointment Details
+  requestedDate   DateTime
+  requestedTime   String
+  confirmedDate   DateTime?
+  confirmedTime   String?
+  duration        Int       @default(60)
+  type            String
+  mode            String    @default("In-Person")
+  priority        String    @default("Medium")
+  reason          String
+  studentConcerns String?
+
+  // Status
+  status String @default("Pending")
+
+  // Notes
+  preSessionNotes  String?
+  sessionSummary   String?
+  recommendations  String?
+  nextSteps        String?
+  followUpRequired Boolean      @default(false)
+  followUpDate     DateTime?
+  actionItems      ActionItem[]
+
+  // Communication
+  emailSent            Boolean   @default(false)
+  emailSentDate        DateTime?
+  reminderSent         Boolean   @default(false)
+  reminderSentDate     DateTime?
+  confirmationSent     Boolean   @default(false)
+  confirmationSentDate DateTime?
+
+  // Feedback
+  studentRating      Int?
+  studentComments    String?
+  counsellorRating   Int?
+  counsellorComments String?
+
+  // Metadata
+  requestedBy      String            @default("Student")
+  urgencyLevel     String            @default("Normal")
+  isRecurring      Boolean           @default(false)
+  recurringPattern RecurringPattern?
+
+  followUpEmails FollowUpEmail[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ActionItem {
+  id            Int         @id @default(autoincrement())
+  appointmentId Int
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  value         String
+}
+
+model RecurringPattern {
+  id                Int         @id @default(autoincrement())
+  appointmentId     Int         @unique
+  appointment       Appointment @relation(fields: [appointmentId], references: [id])
+  frequency         String?
+  endDate           DateTime?
+  remainingSessions Int?
+}
+
+//
+// Auxiliary tables
+//
+
+model Subject {
+  id        Int     @id @default(autoincrement())
+  studentId Int
+  student   Student @relation(fields: [studentId], references: [id])
+  value     String
+}
+
+model Interest {
+  id        Int     @id @default(autoincrement())
+  studentId Int
+  student   Student @relation(fields: [studentId], references: [id])
+  value     String
+}
+
+model Mark {
+  id        Int     @id @default(autoincrement())
+  studentId Int
+  student   Student @relation(fields: [studentId], references: [id])
+  subject   String
+  score     Float
+}
+
+model CounselingNote {
+  id           Int      @id @default(autoincrement())
+  studentId    Int
+  student      Student  @relation(fields: [studentId], references: [id])
+  counsellorId Int?
+  counsellor   Admin?   @relation(fields: [counsellorId], references: [id])
+  date         DateTime @default(now())
+  notes        String?
+}
+
+model FollowUpEmail {
+  id            Int      @id @default(autoincrement())
+  appointmentId Int?
+  studentId     Int
+  subject       String
+  message       String
+  sentAt        DateTime
+  sentBy        Int
+
+  student     Student      @relation(fields: [studentId], references: [id])
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+}
